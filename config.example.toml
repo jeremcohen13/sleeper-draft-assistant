@@ -1,0 +1,22 @@
+# Sleeper draft assistant configuration. Written by setup.py; safe to hand-edit.
+
+[sleeper]
+username = "your_sleeper_username"
+league_id = "your_league_id"
+season = 2026
+
+[rankings]
+path = "rankings.csv"
+overrides = "overrides.json"
+
+[draft]
+poll_interval = 4.0
+# Do not recommend K/DEF before this round (1-based).
+k_def_round_threshold = 12
+# quiet | normal | debug
+verbosity = "normal"
+cache_dir = "cache"
+log_dir = "logs"
+
+[resolved]
+# Filled in by setup.py. Re-run setup.py if the draft order changes.

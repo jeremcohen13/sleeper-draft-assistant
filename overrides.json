@@ -1,0 +1,6 @@
+{
+  "_comment": "Map a rankings-file name to a Sleeper player. Value may be a Sleeper player_id (preferred, shown by setup.py), a Sleeper full name, or a team abbreviation for a defense. Keys starting with _ are ignored.",
+  "Hollywood Brown": "5848",
+  "Bam Knight": "8122",
+  "Chip Trayanum": "13438"
+}

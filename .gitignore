@@ -1,0 +1,13 @@
+# environment / caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+cache/
+logs/
+.DS_Store
+
+# personal files (recreate with setup.py / your own export)
+config.toml
+rankings.csv
+targets.json

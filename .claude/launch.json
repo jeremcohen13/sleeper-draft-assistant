@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dashboard-dry-run",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": ["web.py", "--dry-run", "--no-browser", "--seed", "11", "--sim-delay", "1.2", "--port", "8765"],
+      "port": 8765
+    },
+    {
+      "name": "dashboard-live",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": ["web.py", "--no-browser", "--port", "8765"],
+      "port": 8765
+    }
+  ]
+}
