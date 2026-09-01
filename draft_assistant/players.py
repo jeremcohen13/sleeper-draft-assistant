@@ -140,6 +140,7 @@ class RankedPlayer:
     proj_pts: float | None = None  # projected season points under the league's scoring
     proj_tilt: int | None = None  # rank spots gained (+) or lost (-) under league scoring vs generic half-PPR
     vor: float | None = None  # value over replacement at position, league scoring
+    proj_gap: int | None = None  # rank spots the projections rate him above (+) or below (-) his ranking
     raw: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:

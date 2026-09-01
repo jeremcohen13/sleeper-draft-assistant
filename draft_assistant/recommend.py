@@ -51,6 +51,9 @@ class Weights:
     run: float = 3.0  # position is being run on and this player is the best left there
     scoring_tilt: float = 0.5  # per rank spot your league's scoring moves him vs generic half-PPR
     scoring_tilt_clip: float = 20.0
+    sleeper_gap: float = 0.25  # per rank spot the projections disagree with the rankings
+    sleeper_gap_clip: float = 50.0
+    sleeper_gap_floor: int = 15  # ignore gaps smaller than this as noise
     late_round_threshold: int = 8
 
 
@@ -237,6 +240,15 @@ def score_player(
             reasons.append(f"your scoring moves him up {int(tilt)} spots vs generic half-PPR")
         elif tilt <= -5:
             reasons.append(f"your scoring moves him down {int(-tilt)} spots vs generic half-PPR")
+
+    # Projections versus the rankings: a sleeper, or a fade.
+    if player.proj_gap is not None and abs(player.proj_gap) >= w.sleeper_gap_floor:
+        gap = max(-w.sleeper_gap_clip, min(w.sleeper_gap_clip, float(player.proj_gap)))
+        score += w.sleeper_gap * gap
+        if gap >= 30:
+            reasons.append(f"sleeper: projections rate him {int(gap)} spots above his ranking")
+        elif gap <= -30:
+            reasons.append(f"caution: projections rate him {int(-gap)} spots below his ranking")
 
     # Positional run in progress.
     dm = (demand or {}).get(pos)

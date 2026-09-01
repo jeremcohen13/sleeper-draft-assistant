@@ -178,6 +178,19 @@ class ProjectionSet:
             hit += 1
         return hit
 
+    def attach_gaps(self, ranked: list[RankedPlayer], depth: int, skip: tuple[str, ...] = ("K", "DEF")) -> int:
+        """Set ``proj_gap`` on each ranked player: rankings slot minus projection slot.
+
+        Only the draftable universe is ranked, so a deep flier cannot post a
+        huge gap purely because everyone below replacement level is bunched
+        together. Kickers and defenses are skipped because rankings push them
+        late by convention, which would read as a permanent false positive.
+        """
+        universe = [p for p in ranked if p.rank <= depth and p.vor is not None and p.position not in skip]
+        for i, player in enumerate(sorted(universe, key=lambda p: -(p.vor or 0)), start=1):
+            player.proj_gap = player.rank - i
+        return len(universe)
+
     def scoring_summary(self, scoring: dict[str, float]) -> list[str]:
         """Human-readable lines on how the league's scoring differs from generic half-PPR."""
         lines = []

@@ -322,11 +322,7 @@ class DraftSession:
             "team": p.team, "bye": p.bye, "adp": p.ecr_vs_adp, "upside": p.upside, "bust": p.bust,
             "injury": p.injury, "rookie": p.rookie, "pinned": bool(p.sleeper_id and p.sleeper_id in self.rec_cfg.pinned_ids),
             "proj": p.proj_pts, "tilt": p.proj_tilt, "vor": p.vor,
-            "sleeper": bool(
-                p.position not in ("K", "DEF") and p.rank >= 50
-                and (self.sleeper_gap(p) or 0) >= 20
-                and self._vor_ranks().get(p.sleeper_id or "", 9999) <= 150
-            ),
+            "sleeper": self.is_sleeper(p), "gap": p.proj_gap,
         }
         if score is not None:
             d["fit"] = round(score, 1)
@@ -344,23 +340,12 @@ class DraftSession:
             "mine": self.state.is_mine(p), "keeper": p.is_keeper, "id": p.player_id,
         }
 
-    def _vor_ranks(self) -> dict[str, int]:
-        """Rank the draftable universe by value over replacement (cached)."""
-        if getattr(self, "_vor_rank_cache", None) is None:
-            depth = max(200, self.settings.total_picks + 60)
-            universe = [
-                p for p in self.ranked
-                if p.rank <= depth and p.vor is not None
-                and p.position not in ("K", "DEF") and self.rules.has_slot_for(p.position)
-            ]
-            by_vor = sorted(universe, key=lambda p: -(p.vor or 0))
-            self._vor_rank_cache = {p.sleeper_id: i for i, p in enumerate(by_vor, start=1) if p.sleeper_id}
-        return self._vor_rank_cache
-
-    def sleeper_gap(self, player: RankedPlayer) -> int | None:
-        """How many spots the projections rate him above his rankings slot."""
-        v = self._vor_ranks().get(player.sleeper_id or "")
-        return None if v is None else player.rank - v
+    @staticmethod
+    def is_sleeper(p: RankedPlayer, min_gap: int = 20, min_rank: int = 50, max_proj_rank: int = 150) -> bool:
+        """Available-player test used by both the sleeper list and the board badge."""
+        if p.proj_gap is None or p.position in ("K", "DEF"):
+            return False
+        return p.rank >= min_rank and p.proj_gap >= min_gap and (p.rank - p.proj_gap) <= max_proj_rank
 
     def sleepers(self, limit: int = 10, min_gap: int = 20, min_rank: int = 50, max_proj_rank: int = 150) -> list[dict[str, Any]]:
         """Still-available players the projections like far more than the rankings do.
@@ -373,16 +358,11 @@ class DraftSession:
         """
         out: list[dict[str, Any]] = []
         for p in self.state.available(self.ranked):
-            if p.position in ("K", "DEF") or p.rank < min_rank:
-                continue
-            gap = self.sleeper_gap(p)
-            if gap is None or gap < min_gap:
-                continue
-            if self._vor_ranks()[p.sleeper_id] > max_proj_rank:
+            if not self.is_sleeper(p, min_gap, min_rank, max_proj_rank):
                 continue
             d = self.player_json(p)
-            d["gap"] = gap
-            d["proj_rank"] = self._vor_ranks()[p.sleeper_id]
+            d["gap"] = p.proj_gap
+            d["proj_rank"] = p.rank - (p.proj_gap or 0)
             d["why"] = f"projections rate him {d['proj_rank']}th overall; your rankings have him {p.rank}th"
             out.append(d)
         out.sort(key=lambda d: -d["gap"])
@@ -549,6 +529,7 @@ def build_session(
     if proj is not None:
         proj.compute_vor(rules, settings.teams)
         projected = proj.attach(ranked)
+        proj.attach_gaps(ranked, max(200, settings.total_picks + 60))
         scoring_notes = proj.scoring_summary(scoring)
         logger.info("projections attached to %d/%d ranked players; scoring vs generic half-PPR: %s", projected, len(ranked), "; ".join(scoring_notes) or "identical")
 

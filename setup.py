@@ -244,16 +244,17 @@ def main(argv: list[str] | None = None) -> int:
                 t.add_row(p.name, pos_text(p.position), str(p.rank), f"{p.proj_pts:.0f}", f"[green]+{mv}[/green]" if mv > 0 else f"[red]{mv}[/red]")
             console.print(t)
 
-        depth = max(200, settings.total_picks + 60)
-        universe = [p for p in result.matched if p.rank <= depth and p.vor is not None and p.position not in ("K", "DEF") and rules.has_slot_for(p.position)]
-        vr = {p.sleeper_id: i for i, p in enumerate(sorted(universe, key=lambda p: -(p.vor or 0)), start=1)}
-        sleepers = sorted(((p.rank - vr[p.sleeper_id], p) for p in universe if p.rank >= 50 and p.rank - vr[p.sleeper_id] >= 20 and vr[p.sleeper_id] <= 150), key=lambda t: -t[0])[:12]
+        proj.attach_gaps(result.matched, max(200, settings.total_picks + 60))
+        sleepers = sorted(
+            ((p.proj_gap, p) for p in result.matched
+             if p.proj_gap is not None and p.rank >= 50 and p.proj_gap >= 20 and (p.rank - p.proj_gap) <= 150),
+            key=lambda t: -t[0])[:12]
         if sleepers:
             t = Table(title="Sleepers — projections rate them well above their ranking", box=box.SIMPLE_HEAD, title_style="bold")
             for col in ("PLAYER", "POS", "TEAM", "YOUR RANK", "PROJ RANK", "GAP", "PROJ PTS", "BYE"):
                 t.add_column(col, justify="right" if col not in ("PLAYER", "POS", "TEAM") else "left")
             for gap, p in sleepers:
-                t.add_row(p.name, pos_text(p.position), p.team or "FA", str(p.rank), str(vr[p.sleeper_id]), f"[green]+{gap}[/green]", f"{p.proj_pts:.0f}", str(p.bye or "-"))
+                t.add_row(p.name, pos_text(p.position), p.team or "FA", str(p.rank), str(p.rank - gap), f"[green]+{gap}[/green]", f"{p.proj_pts:.0f}", str(p.bye or "-"))
             console.print(t)
             console.print("[dim]Kickers and defenses excluded (rankings push them late on purpose), and each one has to project as a startable player.[/dim]")
 

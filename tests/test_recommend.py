@@ -153,3 +153,31 @@ def test_upside_bust_columns_parse(tmp_path):
                  '"1",1,"Jahmyr Gibbs",DET,"RB1","6","5 out of 5","1 out of 5","5 out of 5 stars","+3"\n')
     p = read_rankings_csv(f)[0]
     assert p.upside == 5 and p.bust == 1 and p.ecr_vs_adp == 3 and p.bye == 6
+
+
+def test_sleeper_gap_is_weighted_symmetrically(rules_std):
+    from draft_assistant.draft_state import compute_needs
+    from draft_assistant.recommend import RecommendConfig, Weights, score_player
+    w = Weights()
+    needs, tiers, cfg = compute_needs([], rules_std), {}, RecommendConfig()
+    base = rp(80, "Base", "WR")
+    sleeper = rp(80, "Sleeper", "WR"); sleeper.proj_gap = 40
+    fade = rp(80, "Fade", "WR"); fade.proj_gap = -40
+    small = rp(80, "Small", "WR"); small.proj_gap = 10      # under the noise floor
+    huge = rp(80, "Huge", "WR"); huge.proj_gap = 200        # clipped
+    sc = {p.name: score_player(p, needs, rules_std, [], 5, 16, 12, tiers, cfg)
+          for p in (base, sleeper, fade, small, huge)}
+    assert sc["Sleeper"].score - sc["Base"].score == 40 * w.sleeper_gap
+    assert sc["Base"].score - sc["Fade"].score == 40 * w.sleeper_gap
+    assert sc["Small"].score == sc["Base"].score
+    assert sc["Huge"].score - sc["Base"].score == w.sleeper_gap_clip * w.sleeper_gap
+    assert any("sleeper:" in r for r in sc["Sleeper"].reasons)
+    assert any("caution:" in r for r in sc["Fade"].reasons)
+
+
+def test_sleeper_gap_cannot_outrank_a_much_better_player(rules_std):
+    # A 40-spot gap is worth 10 rank points, so it breaks near-ties, not blowouts.
+    board = [rp(40, "Clearly Better", "WR", tier=3), rp(80, "Sleeper", "WR", tier=5)]
+    board[1].proj_gap = 40
+    rec = _rec(board, [], rules_std, current_round=4, picks_left=13)
+    assert rec.take.player.name == "Clearly Better"

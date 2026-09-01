@@ -66,3 +66,40 @@ def test_vor_based_tilt_respects_positional_scarcity(rules_std):
     assert top_qb.tilt is not None and 0 < top_qb.tilt <= 12
     assert ps.by_id["rb0"].tilt is not None and ps.by_id["rb0"].tilt <= 0
     assert not any("rush_yd" in n for n in ps.scoring_summary({**six, "rush_yd": 0.10000000149}))
+
+
+def test_attach_gaps_ranks_only_the_draftable_universe():
+    from draft_assistant.projections import ProjectionSet
+    rows = [_row(f"w{i}", "WR", rec=100 - i, rec_yd=1200 - i * 30, rec_td=8) for i in range(12)]
+    ps = ProjectionSet(rows, BASELINE_HALF_PPR)
+    ranked = []
+    for i in range(12):
+        r = rp(12 - i, f"WR{i}", "WR")       # rankings order is the reverse of projections
+        r.sleeper_id = f"w{i}"
+        ranked.append(r)
+    ranked.append(rp(500, "Deep Flier", "WR"))   # outside the depth cap
+    ranked[-1].sleeper_id = "none"
+    from draft_assistant.draft_state import RosterRules
+    ps.compute_vor(RosterRules.from_positions(["WR", "WR", "BN"]), teams=2)
+    ps.attach(ranked)                      # copies vor onto the ranked players
+    n = ps.attach_gaps(ranked, depth=100)
+    assert n == 12
+    assert ranked[-1].proj_gap is None            # never ranked, so no gap
+    best_proj = next(r for r in ranked if r.sleeper_id == "w0")  # top projection, worst ranking
+    assert best_proj.rank == 12 and best_proj.proj_gap == 11
+    worst_proj = next(r for r in ranked if r.sleeper_id == "w11")
+    assert worst_proj.proj_gap == -11
+
+
+def test_kickers_and_defenses_never_get_a_gap():
+    from draft_assistant.draft_state import RosterRules
+    from draft_assistant.projections import ProjectionSet
+    rows = [_row("k1", "K", fgm_20_29=20, xpm=40), _row("d1", "DEF", sack=40, int=15)]
+    ps = ProjectionSet(rows, {**BASELINE_HALF_PPR, "fgm_20_29": 3, "xpm": 1, "sack": 1, "int": 2})
+    ps.compute_vor(RosterRules.from_positions(["K", "DEF", "BN"]), teams=2)
+    ranked = [rp(200, "Kicker", "K"), rp(210, "Defense", "DEF")]
+    ranked[0].sleeper_id, ranked[1].sleeper_id = "k1", "d1"
+    ps.attach(ranked)
+    assert all(r.vor is not None for r in ranked)   # they do have projections...
+    ps.attach_gaps(ranked, depth=300)
+    assert all(r.proj_gap is None for r in ranked)  # ...but are deliberately skipped

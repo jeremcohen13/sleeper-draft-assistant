@@ -230,8 +230,27 @@ list before the draft. Three filters keep it honest:
 - The projections must see him as a startable player, which drops deep fliers
   whose gap is large but meaningless.
 
-Sleepers do **not** change the fit score — the list is there to inform you, and
-the normal roster logic still decides whether the pick makes sense.
+The gap also feeds the fit score, symmetrically: **+0.25 per rank spot**, so a
+player the projections rate 40 spots above his ranking gains 10 points, and one
+they rate 40 spots below loses 10. Gaps under 15 spots are ignored as noise and
+the effect is clipped at ±50 spots (±12.5 points). That is a tiebreaker, not an
+override: a clearly better-ranked player still wins.
+
+The 0.25 weight was picked by simulating six complete drafts at each of
+0.0, 0.15, 0.20, 0.25, 0.30 and 0.50 and comparing the resulting rosters:
+
+| Weight | Roster per draft | Projected points |
+| --- | --- | --- |
+| 0.00 (off) | QB2 RB4.5 WR6.7 TE2 DEF1 | 2799 |
+| 0.15 | QB1.8 RB4.5 WR6.7 TE2 DEF1 | 2819 |
+| **0.25** | **QB2 RB4 WR7 TE2 DEF1** | **2857** |
+| 0.30 | QB2 RB4 WR7 TE2 DEF1 | 2858 |
+| 0.50 | QB1.8 RB3.5 WR7.7 TE2 DEF1 | 2842 |
+
+Above 0.30 the roster thins out at running back without gaining points. Note
+that "projected points" comes from the same projections being weighted, so it
+is a directional check rather than proof; the weight is kept modest for that
+reason.
 
 ### Draft trends (what the room is doing)
 
@@ -265,6 +284,7 @@ Score = (200 − overall rank) plus adjustments, in rank points:
 | Bye-week stacking | −1.5 per rostered player on the same bye, −2 more if same position (cap −8) |
 | Tier cliff | +5 if the position's current tier will likely be gone before your next pick, +3 if he is the last in his tier |
 | Value vs ADP | +0.4 × delta (clipped ±10) |
+| Sleeper / fade (projections vs your rankings) | ±0.25 per rank spot, ignored under 15, clipped at ±50 |
 | Your league's scoring ("Yours") | +0.5 per rank spot your scoring moves him vs generic half-PPR (clipped ±20) |
 | Positional run in progress | +3 for the best remaining player at that position |
 | Pinned target | +6 |
