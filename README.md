@@ -1,10 +1,32 @@
 # Sleeper Live Draft Assistant
 
-A terminal draft assistant for Sleeper leagues. It follows your draft in real
-time, prints every pick as it lands, and when you are on deck or on the clock
-shows a recommendation panel built from your FantasyPros rankings, your roster
-needs, tier cliffs, bye weeks and value vs ADP. Includes a full dry-run mode so
-you can rehearse the whole draft against simulated opponents.
+A live draft assistant for Sleeper leagues with a browser dashboard (and a
+terminal mode). It follows your draft in real time, shows every pick as it
+lands, and tells you who to take next based on your FantasyPros rankings, your
+roster, tier cliffs, bye weeks, ADP value, season projections scored under
+**your league's exact scoring**, what the rest of the room is doing, and the
+players you've pinned as targets. A dry-run mode lets you rehearse the whole
+draft against simulated opponents.
+
+## Quick start (draft night)
+
+```bash
+caffeinate -i .venv/bin/python web.py
+```
+
+That opens http://localhost:8765. Then:
+
+1. Click **🔇 sound off** once so it becomes **🔔 sound on** (one beep on deck,
+   three when you're on the clock).
+2. Keep the page visible next to the Sleeper app. The header heartbeat should
+   read "live · Sleeper checked Ns ago". Amber means Sleeper is slow, red means
+   the dashboard died (just rerun the command).
+3. Make your picks **in Sleeper**. The dashboard is read-only for the real
+   draft; it only shows advice.
+4. Optional: star a few players on the board as targets before the draft.
+
+Before that works you need a rankings file and a one-time setup (sections 1-2),
+and ideally one rehearsal (section 3).
 
 ## Requirements
 
@@ -88,6 +110,15 @@ tells you which player was chosen so you can override it if it is wrong.
 
 ## 3. Rehearse (dry run)
 
+In the browser (recommended):
+
+```bash
+python web.py --dry-run
+```
+
+Click **Draft** on the TAKE card, the **Draft** button on any Next-best card, or
+the `+` on a board row to make your picks. In the terminal instead:
+
 ```bash
 python draft.py --dry-run
 ```
@@ -119,10 +150,11 @@ Opens http://localhost:8765 in your browser: the board with position
 filters, a big TAKE card with the reason, a "Next best" list of the four strongest alternatives for your roster, roster needs, best-by-position
 with tier-cliff warnings, your lineup/bench, and the live pick feed. The page
 glows green when you are on the clock and amber when you are on deck, and the
-tab title changes so you notice from another tab. Refreshes every 2 seconds.
-`python web.py --dry-run` rehearses in the browser: click **Draft** on the
-TAKE card or the `+` on any board row to make your pick. `--auto` lets it draft
-for you, `--port` changes the port, `--no-browser` skips auto-opening.
+tab title changes so you notice from another tab. The server asks Sleeper
+every 4 seconds and the page refreshes every 2, so a pick shows within ~5s.
+Flags: `--poll 2` (faster polling), `--port` (default 8765; if it is busy the
+next free port is used and printed), `--no-browser`, and for rehearsal
+`--dry-run`, `--auto`, `--seed`, `--sim-delay`, `--slot`.
 
 **Terminal:**
 
@@ -210,8 +242,15 @@ Score = (200 − overall rank) plus adjustments, in rank points:
 | Bye-week stacking | −1.5 per rostered player on the same bye, −2 more if same position (cap −8) |
 | Tier cliff | +5 if the position's current tier will likely be gone before your next pick, +3 if he is the last in his tier |
 | Value vs ADP | +0.4 × delta (clipped ±10) |
+| Your league's scoring ("Yours") | +0.5 per rank spot your scoring moves him vs generic half-PPR (clipped ±20) |
+| Positional run in progress | +3 for the best remaining player at that position |
+| Pinned target | +6 |
+| Upside / bust ratings | +1 per point above 3 upside, −1 per point above 3 bust |
+| Injury status | Out/IR/PUP/Suspended −25, Doubtful −8, Questionable −2 |
 
-Weights live in `draft_assistant/recommend.py` (`Weights`).
+Weights live in `draft_assistant/recommend.py` (`Weights`). The reasons behind
+a score are shown on the TAKE card, on each Next-best card, and as a tooltip on
+any board row.
 
 ## Tests
 
@@ -221,6 +260,10 @@ python -m pytest -q
 
 ## Troubleshooting
 
+- **`Address already in use`** – another `web.py` is still running (check the
+  other terminal). Newer versions just move to the next port automatically.
+- **Page looks frozen** – check the heartbeat under the title. If your Mac
+  slept, polling stopped; run under `caffeinate -i` as in the quick start.
 - **`config.toml not found`** – run `setup.py` first.
 - **`user … not in this draft's draft_order`** – wrong username, or the
   commissioner has not set the order yet. Sleeper only fills `draft_order` once
