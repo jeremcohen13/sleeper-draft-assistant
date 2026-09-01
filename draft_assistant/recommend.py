@@ -43,8 +43,8 @@ class Weights:
     adp_value: float = 0.4
     adp_clip: float = 10.0
     pinned: float = 6.0
-    upside_per_point: float = 1.0  # per point above 3 on FantasyPros' 1-5 upside scale
-    bust_per_point: float = -1.0  # per point above 3 on the bust scale
+    boom: float = 2.0  # FantasyPros upside rated 5/5
+    bust_risk: float = -2.0  # FantasyPros bust risk rated 5/5
     injury_out: float = -25.0  # Out / IR / PUP / Suspended
     injury_doubtful: float = -8.0
     injury_questionable: float = -2.0
@@ -249,15 +249,14 @@ def score_player(
         score += w.pinned
         reasons.append("on your target list")
 
-    # FantasyPros upside / bust flags.
-    if player.upside is not None and player.upside > 3:
-        score += w.upside_per_point * (player.upside - 3)
-        if player.upside >= 5:
-            reasons.append("max upside rating")
-    if player.bust is not None and player.bust > 3:
-        score += w.bust_per_point * (player.bust - 3)
-        if player.bust >= 5:
-            reasons.append("high bust risk")
+    # FantasyPros boom/bust flags. Only a 5-out-of-5 counts: in a typical export
+    # most ranked players sit at 4, so anything below 5 carries no signal.
+    if player.upside == 5:
+        score += w.boom
+        reasons.append("boom pick: rated highest upside")
+    if player.bust == 5:
+        score += w.bust_risk
+        reasons.append("rated highest bust risk")
 
     # Injury status from Sleeper.
     inj = (player.injury or "").lower()

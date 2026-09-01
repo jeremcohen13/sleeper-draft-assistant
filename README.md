@@ -194,9 +194,11 @@ next pick after this one), *Coin flip* (within 3 picks of it), *Can wait*, or
 
 ### Other signals in the score
 
-- **Upside / Bust** columns from the FantasyPros export: +1 per point above 3 on
-  upside, −1 per point above 3 on bust (so a 5/5 upside is +2). Shown as
-  `UP 5` / `BUST 4` badges.
+- **BOOM / BUST** badges come from the UPSIDE and BUST columns of the
+  FantasyPros export, each rated 1-5. Only a 5 is shown, because 4 is the
+  normal rating for a good player (97 of the top 150 in a typical export) and
+  therefore means nothing. `BOOM` = highest upside, +2. `BUST` = highest bust
+  risk, −2. Most players carry neither badge.
 - **Injury status** from Sleeper: Out/IR/PUP/Suspended −25, Doubtful −8,
   Questionable −2. Shown as a red badge. Sleeper marks many players
   Questionable in preseason, so treat that one as a heads-up, not a verdict.
@@ -250,7 +252,7 @@ Score = (200 − overall rank) plus adjustments, in rank points:
 | Your league's scoring ("Yours") | +0.5 per rank spot your scoring moves him vs generic half-PPR (clipped ±20) |
 | Positional run in progress | +3 for the best remaining player at that position |
 | Pinned target | +6 |
-| Upside / bust ratings | +1 per point above 3 upside, −1 per point above 3 bust |
+| BOOM / BUST badge (FantasyPros 5-out-of-5 upside or bust rating) | +2 / −2 |
 | Injury status | Out/IR/PUP/Suspended −25, Doubtful −8, Questionable −2 |
 
 Weights live in `draft_assistant/recommend.py` (`Weights`). The reasons behind

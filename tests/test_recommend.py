@@ -132,13 +132,16 @@ def test_pinned_upside_bust_and_injury(rules_std):
     pinned = rp(30, "Pinned", "WR"); pinned.sleeper_id = "pin1"
     upside = rp(30, "Upside", "WR"); upside.upside = 5; upside.bust = 1
     bust = rp(30, "Bust", "WR"); bust.bust = 5
+    common = rp(30, "Common", "WR"); common.upside = 4; common.bust = 4  # the norm: no effect
     out = rp(30, "Out", "WR"); out.injury = "Out"
     q = rp(30, "Q", "WR"); q.injury = "Questionable"
     cfg = RecommendConfig(pinned_ids={"pin1"})
-    sc = {p.name: score_player(p, needs, rules_std, [], 3, 16, 14, tiers, cfg) for p in (base, pinned, upside, bust, out, q)}
+    sc = {p.name: score_player(p, needs, rules_std, [], 3, 16, 14, tiers, cfg) for p in (base, pinned, upside, bust, out, q, common)}
     assert sc["Pinned"].score - sc["Base"].score == Weights().pinned and "on your target list" in sc["Pinned"].reasons
     assert sc["Upside"].score - sc["Base"].score == 2.0
     assert sc["Base"].score - sc["Bust"].score == 2.0
+    assert sc["Common"].score == sc["Base"].score  # 4-out-of-5 is the norm, so it is ignored
+    assert not any("boom" in r or "bust" in r for r in sc["Common"].reasons)
     assert sc["Base"].score - sc["Out"].score == 25.0 and any("injury" in r for r in sc["Out"].reasons)
     assert sc["Base"].score - sc["Q"].score == 2.0
 

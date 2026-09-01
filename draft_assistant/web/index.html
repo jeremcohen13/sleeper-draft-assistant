@@ -346,8 +346,8 @@
   }
   const badges = (p) => {
     let b = '';
-    if (p.upside >= 4) b += `<span class="badge up" title="FantasyPros upside ${p.upside}/5">UP ${p.upside}</span>`;
-    if (p.bust >= 4) b += `<span class="badge bust" title="FantasyPros bust risk ${p.bust}/5">BUST ${p.bust}</span>`;
+    if (p.upside >= 5) b += `<span class="badge up" title="FantasyPros rates his upside 5 out of 5 — highest boom potential">BOOM</span>`;
+    if (p.bust >= 5) b += `<span class="badge bust" title="FantasyPros rates his bust risk 5 out of 5 — highest chance of disappointing">BUST</span>`;
     if (p.injury) b += `<span class="badge inj" title="Sleeper injury status">${esc(String(p.injury).slice(0, 4).toUpperCase())}</span>`;
     if (p.rookie) b += `<span class="badge rk" title="Rookie">R</span>`;
     return b;
