@@ -17,11 +17,11 @@ caffeinate -i .venv/bin/python web.py
 That opens http://localhost:8765. Then:
 
 1. Click **🔇 sound off** once so it becomes **🔔 sound on**. It plays the
-   on-the-clock alert so you know what to listen for: a synthesized brass
-   fanfare (a shorter, quieter two-note version fires when you're on deck).
-   The click also unlocks browser audio, so don't skip it. To change the
-   alert, edit `CLOCK_FANFARE` / `DECK_FANFARE` in
-   `draft_assistant/web/index.html` — each entry is
+   alert as a preview: a synthesized brass fanfare. It fires **only when you
+   are on the clock**, once per turn — nothing on deck, nothing for other
+   people's picks. The click also unlocks browser audio, so don't skip it.
+   To change the alert, edit `CLOCK_FANFARE` in
+   `draft_assistant/web/index.html`; each entry is
    `[frequency, start offset, length, volume]`.
 2. Keep the page visible next to the Sleeper app. The header heartbeat should
    read "live · Sleeper checked Ns ago". Amber means Sleeper is slow, red means

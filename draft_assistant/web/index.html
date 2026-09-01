@@ -544,7 +544,7 @@
     }
     lastPickCount = s.picks ? s.picks.length : lastPickCount;
     const alertState = s.status === 'drafting' ? (s.is_my_turn ? 'clock' : s.is_on_deck ? 'deck' : '') : '';
-    if (alertState && alertState !== lastAlertState) fanfare(alertState);
+    if (alertState === 'clock' && alertState !== lastAlertState) fanfare();  // your pick only
     lastAlertState = alertState;
     if (s.slot_changed) $('meta').textContent += ' · ⚠ draft order changed — now following your new slot';
     if (s.is_my_turn && s.status === 'drafting') document.title = '⏰ YOU ARE UP — Draft War Room';
@@ -555,50 +555,96 @@
   let lastServerUpdate = 0, lastFetchOk = 0, pollEvery = 4;
   let soundOn = false, audioCtx = null, lastAlertState = '';
 
-  // A brass "stab": two detuned sawtooths through a lowpass whose cutoff snaps
-  // open then closes. The filter sweep is what gives it the horn bite.
-  function brass(freq, when, dur, peak) {
+  // Soft-saturation curve: adds harmonics so the fanfare reads as loud and
+  // punchy without the peak level actually clipping.
+  function satCurve(amount) {
+    const n = 1024, c = new Float32Array(n), k = Math.tanh(amount);
+    for (let i = 0; i < n; i++) c[i] = Math.tanh((i * 2 / n - 1) * amount) / k;
+    return c;
+  }
+
+  // Short filtered-noise transient — the "chiff" at the front of a real horn.
+  // This is most of what makes the hit feel punchy rather than smooth.
+  function chiff(dest, freq, when, dur, peak) {
+    const src = audioCtx.createBufferSource();
+    const len = Math.max(1, Math.ceil(audioCtx.sampleRate * dur));
+    const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    src.buffer = buf;
+    const bp = audioCtx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = freq * 3; bp.Q.value = 0.7;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(peak, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    src.connect(bp); bp.connect(g); g.connect(dest);
+    src.start(when); src.stop(when + dur);
+  }
+
+  // Brass stab: detuned sawtooths, a fast pitch scoop into the note, and a
+  // filter that snaps wide open then clamps down hard.
+  function brass(dest, freq, when, dur, peak) {
     const o1 = audioCtx.createOscillator(), o2 = audioCtx.createOscillator();
     const filt = audioCtx.createBiquadFilter(), g = audioCtx.createGain();
     o1.type = 'sawtooth'; o2.type = 'sawtooth';
-    o1.frequency.value = freq;
-    o2.frequency.value = freq * 1.007;          // detune for thickness
-    filt.type = 'lowpass'; filt.Q.value = 1.8;
-    filt.frequency.setValueAtTime(freq * 1.4, when);
-    filt.frequency.linearRampToValueAtTime(freq * 7, when + 0.05);
-    filt.frequency.exponentialRampToValueAtTime(freq * 2, when + dur);
+    for (const [o, mult] of [[o1, 1], [o2, 1.008]]) {
+      o.frequency.setValueAtTime(freq * mult * 1.05, when);          // scoop up into pitch
+      o.frequency.exponentialRampToValueAtTime(freq * mult, when + 0.025);
+    }
+    filt.type = 'lowpass'; filt.Q.value = 3.2;
+    filt.frequency.setValueAtTime(freq * 1.2, when);
+    filt.frequency.linearRampToValueAtTime(freq * 11, when + 0.018); // snap open
+    filt.frequency.exponentialRampToValueAtTime(freq * 1.9, when + dur * 0.35);
     g.gain.setValueAtTime(0.0001, when);
-    g.gain.linearRampToValueAtTime(peak, when + 0.018);
-    g.gain.setValueAtTime(peak, when + dur * 0.55);
+    g.gain.linearRampToValueAtTime(peak, when + 0.005);              // hard attack
+    g.gain.exponentialRampToValueAtTime(peak * 0.55, when + dur * 0.3);
+    g.gain.setValueAtTime(peak * 0.55, when + dur * 0.62);
     g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-    o1.connect(filt); o2.connect(filt); filt.connect(g); g.connect(audioCtx.destination);
+    o1.connect(filt); o2.connect(filt); filt.connect(g); g.connect(dest);
     o1.start(when); o2.start(when);
     o1.stop(when + dur + 0.02); o2.stop(when + dur + 0.02);
+    chiff(dest, freq, when, 0.035, peak * 0.8);
   }
 
-  // [frequency, start offset, length, level]. Ascending bugle arpeggio; the
-  // clock version lands on a held G5 stacked with the C5 under it.
-  const CLOCK_FANFARE = [
-    [392.00, 0.00, 0.14, 0.10], [523.25, 0.11, 0.14, 0.10], [659.25, 0.22, 0.14, 0.11],
-    [783.99, 0.35, 0.60, 0.12], [523.25, 0.35, 0.60, 0.07],
-  ];
-  const DECK_FANFARE = [[523.25, 0.00, 0.14, 0.08], [783.99, 0.12, 0.34, 0.09]];
+  // Low sine thump under the final hit, for chest.
+  function sub(dest, freq, when, dur, peak) {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq * 1.4, when);
+    o.frequency.exponentialRampToValueAtTime(freq, when + 0.05);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(peak, when + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    o.connect(g); g.connect(dest);
+    o.start(when); o.stop(when + dur + 0.02);
+  }
 
-  function fanfare(which) {
+  // [frequency, start offset, length, level, kind]. Tight staccato arpeggio
+  // that lands on a stacked, sustained hit.
+  const CLOCK_FANFARE = [
+    [392.00, 0.000, 0.10, 0.11], [523.25, 0.085, 0.10, 0.11], [659.25, 0.170, 0.10, 0.12],
+    [783.99, 0.280, 0.55, 0.13], [523.25, 0.280, 0.55, 0.08], [196.00, 0.280, 0.40, 0.20, 'sub'],
+  ];
+
+  function fanfare() {
     if (!soundOn) return;
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
+      const bus = audioCtx.createGain(), shaper = audioCtx.createWaveShaper(), out = audioCtx.createGain();
+      shaper.curve = satCurve(2.2); shaper.oversample = '2x';
+      out.gain.value = 0.85;
+      bus.connect(shaper); shaper.connect(out); out.connect(audioCtx.destination);
       const t0 = audioCtx.currentTime + 0.02;
-      for (const [freq, offset, dur, peak] of (which === 'clock' ? CLOCK_FANFARE : DECK_FANFARE)) {
-        brass(freq, t0 + offset, dur, peak);
+      for (const [freq, offset, dur, peak, kind] of CLOCK_FANFARE) {
+        (kind === 'sub' ? sub : brass)(bus, freq, t0 + offset, dur, peak);
       }
     } catch (e) { /* audio blocked */ }
   }
 
   $('sound').addEventListener('click', () => {
     soundOn = !soundOn; $('sound').textContent = soundOn ? '🔔 sound on' : '🔇 sound off';
-    if (soundOn) fanfare('clock');   // preview the on-the-clock alert
+    if (soundOn) fanfare();   // preview the alert
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   function tickHeart() {
