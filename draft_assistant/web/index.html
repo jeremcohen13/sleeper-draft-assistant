@@ -544,7 +544,7 @@
     }
     lastPickCount = s.picks ? s.picks.length : lastPickCount;
     const alertState = s.status === 'drafting' ? (s.is_my_turn ? 'clock' : s.is_on_deck ? 'deck' : '') : '';
-    if (alertState && alertState !== lastAlertState) beep(alertState === 'clock' ? 3 : 1);
+    if (alertState && alertState !== lastAlertState) chime(alertState === 'clock' ? CLOCK_CHIME : DECK_CHIME, alertState === 'clock' ? 0.14 : 0.1);
     lastAlertState = alertState;
     if (s.slot_changed) $('meta').textContent += ' · ⚠ draft order changed — now following your new slot';
     if (s.is_my_turn && s.status === 'drafting') document.title = '⏰ YOU ARE UP — Draft War Room';
@@ -554,21 +554,33 @@
 
   let lastServerUpdate = 0, lastFetchOk = 0, pollEvery = 4;
   let soundOn = false, audioCtx = null, lastAlertState = '';
-  function beep(times) {
+  function tone(freq, when, dur, peak) {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(peak, when + 0.015);      // soft attack, no click
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);  // bell-like decay
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(when); o.stop(when + dur + 0.02);
+  }
+  function chime(notes, peak) {
     if (!soundOn) return;
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      for (let i = 0; i < times; i++) {
-        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-        o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.08;
-        o.connect(g); g.connect(audioCtx.destination);
-        const t0 = audioCtx.currentTime + i * 0.28; o.start(t0); o.stop(t0 + 0.16);
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const t0 = audioCtx.currentTime + 0.02;
+      for (const [freq, offset] of notes) {
+        tone(freq, t0 + offset, 1.1, peak);            // fundamental
+        tone(freq * 2, t0 + offset, 0.6, peak * 0.22); // quiet octave for shimmer
       }
     } catch (e) { /* audio blocked */ }
   }
+  // On deck: two soft rising notes. On the clock: a C-major arpeggio.
+  const DECK_CHIME = [[659.25, 0], [987.77, 0.15]];
+  const CLOCK_CHIME = [[523.25, 0], [659.25, 0.14], [783.99, 0.28], [1046.5, 0.42]];
   $('sound').addEventListener('click', () => {
     soundOn = !soundOn; $('sound').textContent = soundOn ? '🔔 sound on' : '🔇 sound off';
-    if (soundOn) beep(1);
+    if (soundOn) chime(DECK_CHIME, 0.1);
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   function tickHeart() {

@@ -16,8 +16,9 @@ caffeinate -i .venv/bin/python web.py
 
 That opens http://localhost:8765. Then:
 
-1. Click **🔇 sound off** once so it becomes **🔔 sound on** (one beep on deck,
-   three when you're on the clock).
+1. Click **🔇 sound off** once so it becomes **🔔 sound on**. You get a soft
+   two-note chime on deck and a four-note one when you're on the clock. The
+   click also unlocks browser audio, so don't skip it.
 2. Keep the page visible next to the Sleeper app. The header heartbeat should
    read "live · Sleeper checked Ns ago". Amber means Sleeper is slow, red means
    the dashboard died (just rerun the command).
