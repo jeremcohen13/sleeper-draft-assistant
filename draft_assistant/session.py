@@ -322,6 +322,11 @@ class DraftSession:
             "team": p.team, "bye": p.bye, "adp": p.ecr_vs_adp, "upside": p.upside, "bust": p.bust,
             "injury": p.injury, "rookie": p.rookie, "pinned": bool(p.sleeper_id and p.sleeper_id in self.rec_cfg.pinned_ids),
             "proj": p.proj_pts, "tilt": p.proj_tilt, "vor": p.vor,
+            "sleeper": bool(
+                p.position not in ("K", "DEF") and p.rank >= 50
+                and (self.sleeper_gap(p) or 0) >= 20
+                and self._vor_ranks().get(p.sleeper_id or "", 9999) <= 150
+            ),
         }
         if score is not None:
             d["fit"] = round(score, 1)
@@ -338,6 +343,50 @@ class DraftSession:
             "rank": r.rank if r else None, "tier": r.tier if r else None, "bye": r.bye if r else None,
             "mine": self.state.is_mine(p), "keeper": p.is_keeper, "id": p.player_id,
         }
+
+    def _vor_ranks(self) -> dict[str, int]:
+        """Rank the draftable universe by value over replacement (cached)."""
+        if getattr(self, "_vor_rank_cache", None) is None:
+            depth = max(200, self.settings.total_picks + 60)
+            universe = [
+                p for p in self.ranked
+                if p.rank <= depth and p.vor is not None
+                and p.position not in ("K", "DEF") and self.rules.has_slot_for(p.position)
+            ]
+            by_vor = sorted(universe, key=lambda p: -(p.vor or 0))
+            self._vor_rank_cache = {p.sleeper_id: i for i, p in enumerate(by_vor, start=1) if p.sleeper_id}
+        return self._vor_rank_cache
+
+    def sleeper_gap(self, player: RankedPlayer) -> int | None:
+        """How many spots the projections rate him above his rankings slot."""
+        v = self._vor_ranks().get(player.sleeper_id or "")
+        return None if v is None else player.rank - v
+
+    def sleepers(self, limit: int = 10, min_gap: int = 20, min_rank: int = 50, max_proj_rank: int = 150) -> list[dict[str, Any]]:
+        """Still-available players the projections like far more than the rankings do.
+
+        Three filters keep the list actionable: kickers and defenses are out
+        (rankings push them late on purpose, so the gap is a convention rather
+        than an edge), the player must be ranked outside the early rounds, and
+        the projections must see him as a startable player rather than a deep
+        flier with a large but meaningless gap.
+        """
+        out: list[dict[str, Any]] = []
+        for p in self.state.available(self.ranked):
+            if p.position in ("K", "DEF") or p.rank < min_rank:
+                continue
+            gap = self.sleeper_gap(p)
+            if gap is None or gap < min_gap:
+                continue
+            if self._vor_ranks()[p.sleeper_id] > max_proj_rank:
+                continue
+            d = self.player_json(p)
+            d["gap"] = gap
+            d["proj_rank"] = self._vor_ranks()[p.sleeper_id]
+            d["why"] = f"projections rate him {d['proj_rank']}th overall; your rankings have him {p.rank}th"
+            out.append(d)
+        out.sort(key=lambda d: -d["gap"])
+        return out[:limit]
 
     def trends(self, rec: Recommendation) -> dict[str, Any]:
         """Recent positional runs and what the teams picking before me still need."""
@@ -426,6 +475,7 @@ class DraftSession:
                 "available": available,
                 "targets": self.target_advice(),
                 "trends": self.trends(rec),
+                "sleepers": self.sleepers(),
                 "polls": self.polls,
                 "error": self.last_error,
                 "updated": self.updated_at,

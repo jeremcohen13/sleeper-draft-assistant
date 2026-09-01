@@ -96,9 +96,10 @@
   .chip.active { color: var(--ink); background: var(--panel-2); border-color: var(--ink-3); }
   .chip[data-pos="QB"].active { color: var(--qb); } .chip[data-pos="RB"].active { color: var(--rb); } .chip[data-pos="WR"].active { color: var(--wr); } .chip[data-pos="TE"].active { color: var(--te); } .chip[data-pos="DEF"].active { color: var(--def); } .chip[data-pos="K"].active { color: var(--k); }
   table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; table-layout: auto; }
-  th { text-align: left; font-weight: 500; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); padding: 4px 5px 8px; border-bottom: 1px solid var(--line); }
-  td { padding: 5px 5px; border-bottom: 1px solid rgba(35,44,56,.6); white-space: nowrap; }
-  td.name { white-space: normal; }
+  th { text-align: left; font-weight: 500; font-size: 9.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); padding: 4px 4px 8px; border-bottom: 1px solid var(--line); white-space: normal; line-height: 1.25; }
+  td { padding: 5px 4px; border-bottom: 1px solid rgba(35,44,56,.6); white-space: nowrap; }
+  td.name { white-space: normal; min-width: 124px; }
+  td.name .who { white-space: nowrap; }
   tr.row { transition: background .15s; }
   tr.row:hover { background: var(--panel); }
   tr.row.is-take { background: rgba(124,255,107,.08); box-shadow: inset 3px 0 0 var(--green); }
@@ -116,6 +117,8 @@
   tr.row:hover .draft-btn, tr.row.is-take .draft-btn { opacity: 1; pointer-events: auto; }
   .draft-btn:hover { background: var(--green); color: #071a06; }
   .draft-btn:disabled { opacity: .3 !important; cursor: default; }
+  .legend { font-size: 11px; line-height: 1.7; color: var(--ink-3); }
+  .legend b { color: var(--ink-2); font-weight: 600; font-family: var(--mono); font-size: 10px; letter-spacing: .06em; }
   .star { cursor: pointer; background: none; border: 0; color: var(--ink-3); font-size: 15px; line-height: 1; padding: 0 2px; opacity: .45; }
   .star:hover { opacity: 1; color: var(--amber); }
   .star.on { opacity: 1; color: var(--amber); }
@@ -124,6 +127,12 @@
   .badge.bust { color: var(--amber); border: 1px solid rgba(255,176,32,.4); }
   .badge.inj { color: var(--red); border: 1px solid rgba(255,92,92,.5); }
   .badge.rk { color: var(--wr); border: 1px solid rgba(95,200,255,.4); }
+  .badge.slp { color: #ffa8f0; border: 1px solid rgba(255,168,240,.45); }
+  .sleepers { display: grid; gap: 5px; }
+  .slp { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); }
+  .slp .g { font-family: var(--display); font-weight: 800; font-size: 20px; color: #ffa8f0; text-align: center; line-height: 1; }
+  .slp .nm { font-weight: 600; font-size: 13.5px; }
+  .slp .nm small { display: block; color: var(--ink-3); font-family: var(--mono); font-weight: 400; font-size: 10.5px; margin-top: 2px; }
   .targets { display: grid; gap: 6px; }
   .tg { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); }
   .tg .nm { font-weight: 600; font-size: 14px; }
@@ -230,6 +239,7 @@
   .toast.show { opacity: 1; }
   .toast.err { border-color: var(--red); color: var(--red); }
 
+  @media (max-width: 1150px) { th.opt, td.opt { display: none; } }
   @media (max-width: 1250px) {
     main { grid-template-columns: 1fr 1fr; }
     section.roster { grid-column: 1 / -1; }
@@ -286,12 +296,34 @@
         <button class="chip" data-pos="DEF">DEF</button>
         <button class="chip" data-pos="K">K</button>
       </div>
+      <div class="legend">
+        <b>VALUE</b> vs where he normally gets drafted (+ = you can wait on him) ·
+        <b>PTS</b> projected season points in your scoring ·
+        <b>SCORING</b> spots your 6-point passing TDs move him ·
+        <b>FIT</b> overall score for your roster ·
+        <b>BOOM</b> highest upside · <b>BUST</b> highest bust risk ·
+        <b>INJ?</b> listed questionable · <b>OUT</b> not playing ·
+        <b>SLEEPER</b> projections rate him above his ranking
+      </div>
       <div class="scroll">
         <table>
-          <thead><tr><th></th><th class="num">Rk</th><th class="num">Tier</th><th>Player</th><th>Pos</th><th class="num">Bye</th><th class="num">ADP±</th><th class="num" title="Projected season points under YOUR league scoring">Proj</th><th class="num" title="Rank spots gained (+) or lost (−) under your scoring vs generic half-PPR">Yours</th><th class="num">Fit</th><th></th></tr></thead>
+          <thead><tr>
+            <th title="Star a player to add him to your targets"></th>
+            <th class="num" title="Overall rank in your FantasyPros file">RANK</th>
+            <th class="num" title="FantasyPros tier — players in the same tier are roughly interchangeable">TIER</th>
+            <th>PLAYER</th>
+            <th>POS</th>
+            <th class="num" title="Bye week">BYE</th>
+            <th class="num" title="Value: how his usual draft spot compares to his rank. + means he normally goes later, so you can wait. − means he normally goes earlier, so taking him here is a reach.">VALUE</th>
+            <th class="num opt" title="Projected season points under your league's scoring">PTS</th>
+            <th class="num opt" title="How many rank spots your league's scoring moves him versus generic half-PPR. Positive is better for you.">SCORING</th>
+            <th class="num" title="Overall score for your next pick: rank plus roster needs, tier cliffs, byes, value and everything else">FIT</th>
+            <th></th></tr></thead>
           <tbody id="board"></tbody>
         </table>
       </div>
+      <h2>Sleepers <span class="meta">projections rate them well above your rankings · click ☆ to target</span></h2>
+      <div class="sleepers" id="sleepers"></div>
     </section>
 
     <section class="rec">
@@ -344,12 +376,18 @@
     if (el.__last === html) return false;
     el.__last = html; el.innerHTML = html; return true;
   }
+  const SIDELINED = ['out', 'ir', 'pup', 'sus', 'suspended', 'nfi', 'cov'];
   const badges = (p) => {
     let b = '';
-    if (p.upside >= 5) b += `<span class="badge up" title="FantasyPros rates his upside 5 out of 5 — highest boom potential">BOOM</span>`;
-    if (p.bust >= 5) b += `<span class="badge bust" title="FantasyPros rates his bust risk 5 out of 5 — highest chance of disappointing">BUST</span>`;
-    if (p.injury) b += `<span class="badge inj" title="Sleeper injury status">${esc(String(p.injury).slice(0, 4).toUpperCase())}</span>`;
-    if (p.rookie) b += `<span class="badge rk" title="Rookie">R</span>`;
+    if (p.upside >= 5) b += `<span class="badge up" title="Boom potential — FantasyPros rates his upside 5 out of 5, the highest">BOOM</span>`;
+    if (p.bust >= 5) b += `<span class="badge bust" title="Bust risk — FantasyPros rates his bust risk 5 out of 5, the highest">BUST</span>`;
+    if (p.injury) {
+      const raw = String(p.injury), low = raw.toLowerCase();
+      const label = SIDELINED.includes(low) ? 'OUT' : 'INJ?';
+      b += `<span class="badge inj" title="Injury status on Sleeper: ${esc(raw)}${label === 'INJ?' ? ' (very common in preseason)' : ''}">${label}</span>`;
+    }
+    if (p.rookie) b += `<span class="badge rk" title="Rookie — first NFL season">ROOKIE</span>`;
+    if (p.sleeper) b += `<span class="badge slp" title="Sleeper — season projections rate him well above where your rankings have him">SLEEPER</span>`;
     return b;
   };
 
@@ -432,9 +470,9 @@
       <tr class="row ${p.id === takeId ? 'is-take' : p.id === backupId ? 'is-backup' : ''} ${p.blocked ? 'blocked' : ''}" title="${esc((p.reasons || []).join(' · '))}">
         <td><button class="star ${p.pinned ? 'on' : ''}" data-id="${esc(p.id)}" data-pinned="${p.pinned ? 1 : 0}" title="${p.pinned ? 'Unpin' : 'Pin as a target'}">${p.pinned ? '★' : '☆'}</button></td>
         <td class="num">${p.rank}</td><td class="num tier">${n(p.tier)}</td>
-        <td class="name">${esc(p.name)}${badges(p)}<small>${esc(p.team || 'FA')}</small></td><td>${pos(p.pos)}</td>
+        <td class="name"><span class="who">${esc(p.name)}</span>${badges(p)}<small>${esc(p.team || 'FA')}</small></td><td>${pos(p.pos)}</td>
         <td class="num tier">${n(p.bye)}</td><td class="num">${adp(p.adp)}</td>
-        <td class="num tier">${p.proj == null ? '–' : Math.round(p.proj)}</td><td class="num">${adp(p.tilt)}</td>
+        <td class="num tier opt">${p.proj == null ? '–' : Math.round(p.proj)}</td><td class="num opt">${adp(p.tilt)}</td>
         <td class="num fit">${p.fit == null ? '–' : p.blocked ? '✕' : Math.round(p.fit)}</td>
         <td>${canDraft ? `<button class="draft-btn" data-id="${esc(p.id)}" data-name="${esc(p.name)}" title="Draft ${esc(p.name)}">+</button>` : ''}</td>
       </tr>`).join(''));
@@ -492,6 +530,18 @@
     }).join(''));
   }
 
+  function renderSleepers(s) {
+    const list = (s.sleepers || []).slice(0, 6);
+    if (!list.length) { setHTML($('sleepers'), '<div class="empty-note">None left on the board.</div>'); return; }
+    setHTML($('sleepers'), list.map((p) => `
+      <div class="slp">
+        <div class="g" title="Spots the projections rate him above your ranking">+${p.gap}</div>
+        <div class="nm">${esc(p.name)} ${pos(p.pos)} <span class="tier" style="font-family:var(--mono);font-size:11px">${esc(p.team || 'FA')}</span>
+          <small>your rank #${p.rank} · projections say ${p.proj_rank}th · ${Math.round(p.proj)} pts · bye ${n(p.bye)}</small></div>
+        <button class="star ${p.pinned ? 'on' : ''}" data-id="${esc(p.id)}" data-pinned="${p.pinned ? 1 : 0}" title="${p.pinned ? 'Unpin' : 'Add to targets'}">${p.pinned ? '★' : '☆'}</button>
+      </div>`).join(''));
+  }
+
   function renderTrends(s) {
     const t = s.trends; if (!t) { setHTML($('trends'), ''); return; }
     const order = ['QB', 'RB', 'WR', 'TE', 'DEF', 'K'];
@@ -538,7 +588,7 @@
 
   function render(s) {
     snap = s;
-    renderHeader(s); renderBoard(s); renderRec(s); renderTargets(s); renderTrends(s); renderRoster(s);
+    renderHeader(s); renderBoard(s); renderSleepers(s); renderRec(s); renderTargets(s); renderTrends(s); renderRoster(s);
     if (lastPickCount >= 0 && s.picks && s.picks.length > lastPickCount && s.picks[0]) {
       const p = s.picks[0]; if (!p.mine) toast(`${p.label} ${p.owner}: ${p.name} (${p.pos})`);
     }
@@ -674,6 +724,9 @@
   $('board').addEventListener('click', (e) => {
     const st = e.target.closest('.star'); if (st) { pin(st.dataset.id, st.dataset.pinned !== '1'); return; }
     const b = e.target.closest('.draft-btn'); if (b) draft(b.dataset.id, b.dataset.name);
+  });
+  $('sleepers').addEventListener('click', (e) => {
+    const st = e.target.closest('.star'); if (st) pin(st.dataset.id, st.dataset.pinned !== '1');
   });
   $('targets').addEventListener('click', (e) => {
     const b = e.target.closest('.unpin'); if (b) pin(b.dataset.id, false);

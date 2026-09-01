@@ -217,6 +217,22 @@ the FantasyPros ranks. That feeds the score at 0.5 points per spot (capped at
 Projections are cached in `cache/projections_<season>.json` for 24h; if the
 download fails, everything still works on rankings alone.
 
+### Sleepers
+
+A **Sleepers** panel under the board lists still-available players whose
+projected points (under your scoring) rate them well above where your rankings
+have them, and a `SLEEPER` badge marks them inline. `setup.py` prints the same
+list before the draft. Three filters keep it honest:
+
+- Kickers and defenses are excluded. Rankings push them late on purpose, so
+  their gap is a drafting convention, not an edge.
+- Ranked outside the early rounds, so it surfaces values rather than stars.
+- The projections must see him as a startable player, which drops deep fliers
+  whose gap is large but meaningless.
+
+Sleepers do **not** change the fit score — the list is there to inform you, and
+the normal roster logic still decides whether the pick makes sense.
+
 ### Draft trends (what the room is doing)
 
 The tier-cliff "expected to go before your next pick" number is not just the
