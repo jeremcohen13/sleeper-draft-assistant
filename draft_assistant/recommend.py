@@ -19,7 +19,7 @@ class Weights:
     """Tunable scoring weights, in "rank points" (1.0 == one spot of overall rank)."""
 
     open_starter: float = 15.0
-    over_target: float = -8.0  # per player beyond the roster-plan target at that position, compounding
+    over_target: float = -12.0  # per player beyond the roster-plan target at that position, compounding
     behind_pace: float = 4.0  # per player the position is behind its planned pace
     open_flex: float = 6.0
     open_superflex_qb: float = 12.0
@@ -28,8 +28,11 @@ class Weights:
     no_slot: float = -1000.0
     early_k_def: float = -150.0
     extra_k_def: float = -150.0
-    second_qb_no_sf: float = -25.0
-    second_qb_no_sf_early: float = -40.0  # before round 8
+    # A backup QB in a 1-QB league almost never starts, so his overall rank
+    # badly overstates his value: he is still on the board *because* nobody
+    # needs him. The penalty has to be large enough to cancel that rank edge.
+    second_qb_no_sf: float = -100.0
+    second_qb_no_sf_early: float = -120.0  # before round 8
     third_qb_no_sf: float = -150.0
     third_qb_sf: float = -25.0
     fourth_qb_sf: float = -150.0
@@ -210,9 +213,15 @@ def score_player(
         if bye_reason:
             reasons.append(bye_reason)
 
-    # Tier cliff.
+    # Tier cliff — but only for a position you still intend to draft. "Last
+    # chance at QB tier 5" is not a reason to take a backup you will never start.
+    wanted = (
+        needs.open_starters.get(pos, 0) > 0
+        or needs.open_flex_for(pos) > 0
+        or count < targets.get(pos, 0)
+    )
     info = tiers.get(pos)
-    if info and info.tier is not None and player.tier == info.tier:
+    if wanted and info and info.tier is not None and player.tier == info.tier:
         if info.at_risk:
             score += w.tier_last_chance
             reasons.append(

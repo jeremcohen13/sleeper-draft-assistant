@@ -117,9 +117,11 @@ def test_roster_balance_prefers_needed_wr_over_fifth_rb(rules_std):
 
 def test_roster_targets_balanced_plan(rules_std, rules_sf):
     from draft_assistant.draft_state import roster_targets
+    # A 1-QB league plans exactly one quarterback; the spare pick goes to WR.
     t = roster_targets(rules_std, 16)
-    assert t == {"QB": 2, "RB": 5, "WR": 6, "TE": 2, "K": 0, "DEF": 1}
+    assert t == {"QB": 1, "RB": 5, "WR": 7, "TE": 2, "K": 0, "DEF": 1}
     assert sum(t.values()) == 16
+    # Superflex starts two, so it plans a third as cover.
     t2 = roster_targets(rules_sf, 14)
     assert t2["QB"] == 3 and t2["K"] == 1 and sum(t2.values()) == 14
 
@@ -181,3 +183,34 @@ def test_sleeper_gap_cannot_outrank_a_much_better_player(rules_std):
     board[1].proj_gap = 40
     rec = _rec(board, [], rules_std, current_round=4, picks_left=13)
     assert rec.take.player.name == "Clearly Better"
+
+
+def test_backup_qb_never_beats_a_startable_player_in_a_one_qb_league(rules_std):
+    """A QB still on the board late is cheap because nobody needs him.
+
+    Reproduces a live-draft bug: with a QB already rostered, an overall rank of
+    75 outweighed every penalty and the tool kept recommending quarterbacks.
+    """
+    roster = ["QB", "RB", "RB", "RB", "RB", "RB", "WR", "WR", "WR", "WR", "TE"]
+    board = [rp(75, "Backup QB", "QB", tier=5), rp(156, "Depth WR", "WR", tier=9)]
+    rec = _rec(board, roster, rules_std, current_round=12, picks_left=4)
+    assert rec.take.player.name == "Depth WR"
+    qb = {s.player.name: s for s in rec.scored}["Backup QB"]
+    assert any("2nd QB" in r for r in qb.reasons)
+    assert any("over your QB plan" in r for r in qb.reasons)
+    # An elite QB falling absurdly far is still allowed to win.
+    board2 = [rp(10, "Elite QB", "QB", tier=1), rp(156, "Depth WR", "WR", tier=9)]
+    assert _rec(board2, roster, rules_std, current_round=12, picks_left=4).take.player.name == "Elite QB"
+
+
+def test_tier_cliff_urgency_ignores_positions_you_are_done_with(rules_std):
+    from draft_assistant.draft_state import compute_needs, tier_cliff
+    from draft_assistant.recommend import RecommendConfig, score_player
+    roster_pos = ["QB", "RB", "RB", "RB", "RB", "RB", "WR", "WR", "WR", "WR", "TE"]
+    roster = [rp(500 + i, f"m{i}", p) for i, p in enumerate(roster_pos)]
+    needs = compute_needs(roster_pos, rules_std)
+    qb = rp(75, "Backup QB", "QB", tier=5)
+    board = [qb]
+    tiers = {"QB": tier_cliff(board, "QB", 11)}
+    sc = score_player(qb, needs, rules_std, roster, 12, 16, 4, tiers, RecommendConfig())
+    assert not any("last chance" in r or "last player" in r for r in sc.reasons)

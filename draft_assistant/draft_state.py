@@ -211,7 +211,12 @@ def roster_targets(rules: RosterRules, total_rounds: int) -> dict[str, int]:
     """
     targets = {pos: rules.starters.get(pos, 0) for pos in FANTASY_POSITIONS}
     sf = rules.flex.get("SUPER_FLEX", 0)
-    targets["QB"] += sf + (1 if rules.bench >= 5 and targets["QB"] + sf > 0 else 0)
+    targets["QB"] += sf
+    # Only superflex leagues plan for a spare quarterback. In a 1-QB league the
+    # backup almost never starts, so budgeting a pick for him costs you depth
+    # at the positions that actually fill your lineup.
+    if sf and rules.bench >= 4:
+        targets["QB"] += 1
     if targets["TE"] and rules.bench >= 6:
         targets["TE"] += 1
     fixed = targets["QB"] + targets["TE"] + targets["K"] + targets["DEF"]

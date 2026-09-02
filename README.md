@@ -281,14 +281,14 @@ Score = (200 − overall rank) plus adjustments, in rank points:
 | --- | --- |
 | Fills an open dedicated starter (QB/RB/WR/TE/DEF/K) | +15, +30 more when your remaining picks ≤ open starters |
 | Fills an open FLEX / SUPER_FLEX | +6 (QB in SUPER_FLEX +12) |
-| Roster plan (balance) | Each position has a planned end-of-draft count derived from your lineup (your league: QB 2, RB 5, WR 6, TE 2, DEF 1). Going over the plan costs −8 per extra player (compounding); being behind pace for the round earns +4 per missing player. A soft nudge, not a quota: a clearly better-ranked player still wins. |
+| Roster plan (balance) | Each position has a planned end-of-draft count derived from your lineup (your league: QB 1, RB 5, WR 7, TE 2, DEF 1 — only superflex leagues plan a spare QB). Going over the plan costs −12 per extra player (compounding); being behind pace for the round earns +4 per missing player. A soft nudge, not a quota: a clearly better-ranked player still wins. |
 | Position has no slot in this league (e.g. K when the lineup has no K) | never recommended |
 | K/DEF before `k_def_round_threshold` (default round 12) | blocked unless you must fill starters |
-| 2nd QB in a 1-QB league | −40 before round 8, −25 after; 3rd QB blocked |
+| 2nd QB in a 1-QB league | −120 before round 8, −100 after; 3rd QB blocked. A quarterback still on the board late is cheap *because nobody needs him*, so his overall rank badly overstates his value |
 | Superflex: 3rd QB −25, 4th blocked | |
 | 2nd TE | −20 (−10 if a FLEX is open); 3rd TE blocked |
 | Bye-week stacking | −1.5 per rostered player on the same bye, −2 more if same position (cap −8) |
-| Tier cliff | +5 if the position's current tier will likely be gone before your next pick, +3 if he is the last in his tier |
+| Tier cliff | +5 if the position's current tier will likely be gone before your next pick, +3 if he is the last in his tier. Only counted for positions you still plan to draft, so "last chance at QB tier 5" cannot push a backup you will never start |
 | Value vs ADP | +0.4 × delta (clipped ±10) |
 | Sleeper / fade (projections vs your rankings) | ±0.25 per rank spot, ignored under 15, clipped at ±50 |
 | Your league's scoring ("Yours") | +0.5 per rank spot your scoring moves him vs generic half-PPR (clipped ±20) |
