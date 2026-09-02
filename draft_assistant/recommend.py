@@ -330,7 +330,7 @@ def recommend(
             p, needs, rules, my_roster, current_round, total_rounds, my_picks_left, tiers, cfg,
             demand=demand, best_at_pos=p.sleeper_id in best_ids,
         )
-        for p in available[:150]
+        for p in available[:200]
     ]
     scored.sort(key=lambda s: (-s.score, s.player.rank))
     draftable = [s for s in scored if not s.blocked] or scored

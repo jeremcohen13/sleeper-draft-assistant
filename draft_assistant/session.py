@@ -399,7 +399,7 @@ class DraftSession:
             nxt = st.my_next_pick_no
             fit = {sc.player.sleeper_id: sc for sc in rec.scored}
             available = []
-            for p in st.available(self.ranked)[:80]:
+            for p in st.available(self.ranked)[:200]:
                 sc = fit.get(p.sleeper_id)
                 available.append(self.player_json(p, sc.score if sc else None, sc.blocked if sc else False, sc.reasons if sc else None))
             best = {}

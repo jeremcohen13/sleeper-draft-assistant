@@ -94,6 +94,10 @@
   .filters { display: flex; gap: 6px; flex-wrap: wrap; }
   .chip { cursor: pointer; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2); font-family: var(--mono); font-size: 11px; letter-spacing: .08em; }
   .chip.active { color: var(--ink); background: var(--panel-2); border-color: var(--ink-3); }
+  .chip-sep { width: 1px; background: var(--line-2); margin: 2px 4px; align-self: stretch; }
+  .chip.toggle { color: var(--ink-3); }
+  .chip[data-toggle="sleeper"].active { color: #ffa8f0; border-color: #ffa8f0; background: rgba(255,168,240,.12); }
+  .chip[data-toggle="target"].active { color: var(--amber); border-color: var(--amber); background: rgba(255,176,32,.12); }
   .chip[data-pos="QB"].active { color: var(--qb); } .chip[data-pos="RB"].active { color: var(--rb); } .chip[data-pos="WR"].active { color: var(--wr); } .chip[data-pos="TE"].active { color: var(--te); } .chip[data-pos="DEF"].active { color: var(--def); } .chip[data-pos="K"].active { color: var(--k); }
   table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; table-layout: auto; }
   th { text-align: left; font-weight: 500; font-size: 9.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); padding: 4px 4px 8px; border-bottom: 1px solid var(--line); white-space: normal; line-height: 1.25; }
@@ -129,10 +133,10 @@
   .badge.rk { color: var(--wr); border: 1px solid rgba(95,200,255,.4); }
   .badge.slp { color: #ffa8f0; border: 1px solid rgba(255,168,240,.45); }
   .sleepers { display: grid; gap: 5px; }
-  .slp { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); }
-  .slp .g { font-family: var(--display); font-weight: 800; font-size: 20px; color: #ffa8f0; text-align: center; line-height: 1; }
-  .slp .nm { font-weight: 600; font-size: 13.5px; }
-  .slp .nm small { display: block; color: var(--ink-3); font-family: var(--mono); font-weight: 400; font-size: 10.5px; margin-top: 2px; }
+  .sleeper-row { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); }
+  .sleeper-row .g { font-family: var(--display); font-weight: 800; font-size: 20px; color: #ffa8f0; text-align: center; line-height: 1; }
+  .sleeper-row .nm { font-weight: 600; font-size: 13.5px; }
+  .sleeper-row .nm small { display: block; color: var(--ink-3); font-family: var(--mono); font-weight: 400; font-size: 10.5px; margin-top: 2px; }
   .targets { display: grid; gap: 6px; }
   .tg { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); }
   .tg .nm { font-weight: 600; font-size: 14px; }
@@ -295,6 +299,9 @@
         <button class="chip" data-pos="TE">TE</button>
         <button class="chip" data-pos="DEF">DEF</button>
         <button class="chip" data-pos="K">K</button>
+        <span class="chip-sep"></span>
+        <button class="chip toggle" data-toggle="sleeper" title="Show only players the projections rate well above your rankings">SLEEPERS</button>
+        <button class="chip toggle" data-toggle="target" title="Show only players you have starred">★ TARGETS</button>
       </div>
       <div class="legend">
         <b>VALUE</b> vs where he normally gets drafted (+ = you can wait on him) ·
@@ -362,7 +369,7 @@
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
-  let filter = 'ALL';
+  let filter = 'ALL', sleeperOnly = false, targetOnly = false;
   let lastPickCount = -1;
   let snap = null;
   let inFlight = false;
@@ -464,8 +471,15 @@
   function renderBoard(s) {
     const takeId = s.rec?.take?.id, backupId = s.rec?.backup?.id;
     const canDraft = s.dry_run && s.is_my_turn && s.status === 'drafting';
-    const rows = (s.available || []).filter((p) => filter === 'ALL' || p.pos === filter).slice(0, 60);
-    $('board-meta').textContent = `${rows.length} shown · horizon ${s.horizon} picks`;
+    const all = (s.available || []).filter((p) =>
+      (filter === 'ALL' || p.pos === filter) && (!sleeperOnly || p.sleeper) && (!targetOnly || p.pinned));
+    const rows = all.slice(0, 100);
+    const active = [sleeperOnly ? 'sleepers' : '', targetOnly ? 'targets' : ''].filter(Boolean).join(' + ');
+    $('board-meta').textContent = `${all.length} available${active ? ' · ' + active + ' only' : ''} · horizon ${s.horizon} picks`;
+    if (!rows.length) {
+      setHTML($('board'), `<tr><td colspan="11" class="empty-note">Nothing matches this filter${active ? ' — try turning off ' + active : ''}.</td></tr>`);
+      return;
+    }
     setHTML($('board'), rows.map((p) => `
       <tr class="row ${p.id === takeId ? 'is-take' : p.id === backupId ? 'is-backup' : ''} ${p.blocked ? 'blocked' : ''}" title="${esc((p.reasons || []).join(' · '))}">
         <td><button class="star ${p.pinned ? 'on' : ''}" data-id="${esc(p.id)}" data-pinned="${p.pinned ? 1 : 0}" title="${p.pinned ? 'Unpin' : 'Pin as a target'}">${p.pinned ? '★' : '☆'}</button></td>
@@ -534,7 +548,7 @@
     const list = (s.sleepers || []).slice(0, 6);
     if (!list.length) { setHTML($('sleepers'), '<div class="empty-note">None left on the board.</div>'); return; }
     setHTML($('sleepers'), list.map((p) => `
-      <div class="slp">
+      <div class="sleeper-row">
         <div class="g" title="Spots the projections rate him above your ranking">+${p.gap}</div>
         <div class="nm">${esc(p.name)} ${pos(p.pos)} <span class="tier" style="font-family:var(--mono);font-size:11px">${esc(p.team || 'FA')}</span>
           <small>your rank #${p.rank} · projections say ${p.proj_rank}th · ${Math.round(p.proj)} pts · bye ${n(p.bye)}</small></div>
@@ -718,7 +732,13 @@
 
   $('filters').addEventListener('click', (e) => {
     const b = e.target.closest('.chip'); if (!b) return;
-    filter = b.dataset.pos; document.querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', c === b));
+    if (b.dataset.toggle === 'sleeper') { sleeperOnly = !sleeperOnly; b.classList.toggle('active', sleeperOnly); }
+    else if (b.dataset.toggle === 'target') { targetOnly = !targetOnly; b.classList.toggle('active', targetOnly); }
+    else if (b.dataset.pos) {
+      filter = b.dataset.pos;
+      // Scope to the position chips so the toggles keep their own state.
+      document.querySelectorAll('#filters .chip[data-pos]').forEach((c) => c.classList.toggle('active', c === b));
+    }
     if (snap) renderBoard(snap);
   });
   $('board').addEventListener('click', (e) => {

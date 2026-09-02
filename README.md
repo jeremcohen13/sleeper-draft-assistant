@@ -219,6 +219,12 @@ download fails, everything still works on rankings alone.
 
 ### Sleepers
 
+Two filter buttons sit next to the position chips above the board:
+**SLEEPERS** shows only flagged sleepers, **★ TARGETS** only players you have
+starred. They combine with each other and with a position, so `WR` +
+`SLEEPERS` gives you sleeper wide receivers only. The board carries the top
+200 available players so these filters have something to work with.
+
 A **Sleepers** panel under the board lists still-available players whose
 projected points (under your scoring) rate them well above where your rankings
 have them, and a `SLEEPER` badge marks them inline. `setup.py` prints the same
