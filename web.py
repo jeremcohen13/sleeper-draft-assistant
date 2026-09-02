@@ -73,16 +73,23 @@ class Poller(threading.Thread):
         self._last_rec_key: tuple[int | None, bool] | None = None
 
     def refresh(self) -> None:
-        """Recompute the JSON snapshot (called after every poll and every pick)."""
-        rec = self.session.recommendation()
-        st = self.session.state
-        key = (st.current_pick_no, st.is_my_turn)
-        if self.session.status in ("drafting", "paused") and (st.is_my_turn or st.is_on_deck) and key != self._last_rec_key:
-            self._last_rec_key = key
-            self.session.log_recommendation(rec)
-        snap = self.session.snapshot(rec)
-        snap["poll_interval"] = self.interval
-        self.snapshot = snap
+        """Recompute the JSON snapshot (called after every poll and every pick).
+
+        The whole computation plus the assignment happens under the session
+        lock. Without it a refresh that started before a pick could finish
+        afterwards and overwrite the fresh snapshot with a stale one, leaving
+        the page insisting it is still your turn.
+        """
+        with self.session.lock:
+            rec = self.session.recommendation()
+            st = self.session.state
+            key = (st.current_pick_no, st.is_my_turn)
+            if self.session.status in ("drafting", "paused") and (st.is_my_turn or st.is_on_deck) and key != self._last_rec_key:
+                self._last_rec_key = key
+                self.session.log_recommendation(rec)
+            snap = self.session.snapshot(rec)
+            snap["poll_interval"] = self.interval
+            self.snapshot = snap
 
     def run(self) -> None:
         while not self.stop_event.is_set():

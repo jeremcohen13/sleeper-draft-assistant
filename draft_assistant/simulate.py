@@ -70,6 +70,10 @@ class DraftSimulator:
                 self._cpu_pick(state)
         return [dict(p) for p in self.picks]
 
+    def current_picks(self) -> list[dict[str, Any]]:
+        """Picks made so far, without advancing any CPU picks."""
+        return [dict(p) for p in self.picks]
+
     def submit_pick(self, player: RankedPlayer) -> dict[str, Any]:
         """Record my pick. Raises ``ValueError`` if it is not my turn or the player is gone."""
         state = self._state()

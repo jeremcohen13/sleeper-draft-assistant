@@ -297,6 +297,10 @@ class DraftSession:
             if player is None:
                 raise ValueError("Unknown player")
             raw = self.simulator.submit_pick(player)
+            # Merge straight into state so the next snapshot reflects the pick;
+            # otherwise the page keeps showing your turn until the next poll.
+            self.state.update_picks(self.simulator.current_picks())
+            self.updated_at = time.time()
             self.logger.info("MY PICK (dry-run) #%s %s", raw["pick_no"], player.label)
             return Pick.from_raw(raw, self.settings)
 
