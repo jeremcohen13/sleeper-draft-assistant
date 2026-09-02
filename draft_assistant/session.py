@@ -24,6 +24,12 @@ from .simulate import DraftSimulator
 from .sleeper import SleeperAPIError, SleeperClient, pick_active_draft
 
 
+# Bumped whenever the JSON snapshot gains a field the page relies on. The page
+# compares it against its own expected value and warns if the server is older,
+# which happens when index.html is reloaded but web.py was never restarted.
+SNAPSHOT_VERSION = 3
+
+
 class PickSource(Protocol):
     """Anything that can supply the draft and its picks."""
 
@@ -416,6 +422,7 @@ class DraftSession:
             starters, bench = self.lineup()
             picks = sorted(st.picks.values(), key=lambda p: (-self._arrival.get(p.pick_no, -1), -p.pick_no))
             return {
+                "v": SNAPSHOT_VERSION,
                 "league": self.league.get("name"),
                 "dry_run": self.simulator is not None,
                 "status": self.status,

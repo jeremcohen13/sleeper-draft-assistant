@@ -309,8 +309,14 @@ python -m pytest -q
 
 ## Troubleshooting
 
+- **A filter or column shows nothing / red banner across the top** – the page
+  reloads from disk on every refresh but `web.py` loads its Python code once at
+  startup, so refreshing the browser after an update is not enough. Stop the
+  server with Ctrl-C and start it again. The banner appears automatically when
+  the page is newer than the server.
 - **`Address already in use`** – another `web.py` is still running (check the
-  other terminal). Newer versions just move to the next port automatically.
+  other terminal). Newer versions just move to the next port automatically, so
+  make sure you are looking at the port printed by the server you just started.
 - **Page looks frozen** – check the heartbeat under the title. If your Mac
   slept, polling stopped; run under `caffeinate -i` as in the quick start.
 - **`config.toml not found`** – run `setup.py` first.
